@@ -8,11 +8,14 @@ SOURCE_REPO = "arichornlover/TrollStore-DEBs"
 OUTPUT_FILE = "apps.json"
 
 def clean_app_name(filename):
+    # Loại bỏ đuôi .ipa
     name = re.sub(r'\.ipa$', '', filename, flags=re.IGNORECASE)
+    # Thay gạch dưới, gạch ngang thành khoảng trắng
     name = name.replace('_', ' ').replace('-', ' ')
     return name.strip()
 
 def generate_bundle_id(name):
+    # Tạo bundle id an toàn từ tên app
     clean = re.sub(r'[^a-zA-Z0-9]', '', name).lower()
     return f"com.trollstore.{clean}"
 
@@ -43,6 +46,7 @@ def main():
 
     for asset in assets:
         filename = asset.get("name", "")
+        # Chỉ lấy file có đuôi .ipa
         if not filename.lower().endswith(".ipa"):
             continue
 
@@ -59,9 +63,10 @@ def main():
             "size": size,
             "downloadURL": download_url,
             "iconURL": "https://raw.githubusercontent.com/arichornlover/TrollStore-DEBs/main/icon.png",
-            "localizedDescription": f"Bản build mod {app_name} từ kho TrollStore-DEBs."
+            "localizedDescription": f"Bản build mod {app_name} phân phối bởi kho TrollStore-DEBs."
         })
 
+    # Cấu trúc file JSON chuẩn của ESign
     repo_structure = {
         "name": "TrollStore Community Apps",
         "identifier": "com.trollstore.community.repo",
