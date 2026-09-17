@@ -1,0 +1,33 @@
+name: Auto Build TrollStore Repo
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tạo file apps.json từ toàn bộ IPA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python generate_repo.py
+
+      - name: Commit và Push cập nhật
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Quét và cập nhật toàn bộ app TrollStore" && git push)
