@@ -8,19 +8,16 @@ SOURCE_REPO = "arichornlover/TrollStore-DEBs"
 OUTPUT_FILE = "apps.json"
 
 def clean_app_name(filename):
-    # Loại bỏ đuôi .ipa
     name = re.sub(r'\.ipa$', '', filename, flags=re.IGNORECASE)
-    # Thay gạch dưới, gạch ngang thành khoảng trắng
     name = name.replace('_', ' ').replace('-', ' ')
     return name.strip()
 
 def generate_bundle_id(name):
-    # Tạo bundle id an toàn từ tên app
     clean = re.sub(r'[^a-zA-Z0-9]', '', name).lower()
     return f"com.trollstore.{clean}"
 
-def fetch_latest_release():
-    url = f"https://api.github.com/repos/{SOURCE_REPO}/releases/latest"
+def fetch_first_release():
+    url = f"https://api.github.com/repos/{SOURCE_REPO}/releases"
     headers = {'User-Agent': 'ESign-Auto-Builder'}
     token = os.getenv("GITHUB_TOKEN")
     if token:
@@ -28,25 +25,29 @@ def fetch_latest_release():
         
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req) as response:
-        return json.loads(response.read().decode())
+        releases = json.loads(response.read().decode())
+        if not releases:
+            raise Exception("Repo này không có bất kỳ Release nào!")
+        return releases[0]
 
 def main():
     print(f"Đang quét toàn bộ danh sách IPA từ {SOURCE_REPO}...")
     try:
-        release = fetch_latest_release()
+        release = fetch_first_release()
     except Exception as e:
         print(f"Lỗi khi kết nối GitHub API: {e}")
         sys.exit(1)
 
-    tag_version = release.get("tag_name", "").lstrip("v")
+    tag_version = release.get("tag_name", "1.0").lstrip("v")
     pub_date = release.get("published_at", "").split("T")[0]
     assets = release.get("assets", [])
+
+    print(f"Tìm thấy bản release: {tag_version} với {len(assets)} files đính kèm.")
 
     apps_list = []
 
     for asset in assets:
         filename = asset.get("name", "")
-        # Chỉ lấy file có đuôi .ipa
         if not filename.lower().endswith(".ipa"):
             continue
 
@@ -63,10 +64,13 @@ def main():
             "size": size,
             "downloadURL": download_url,
             "iconURL": "https://raw.githubusercontent.com/arichornlover/TrollStore-DEBs/main/icon.png",
-            "localizedDescription": f"Bản build mod {app_name} phân phối bởi kho TrollStore-DEBs."
+            "localizedDescription": f"Bản build mod {app_name} từ kho TrollStore-DEBs."
         })
 
-    # Cấu trúc file JSON chuẩn của ESign
+    if not apps_list:
+        print("Cảnh báo: Không có file .ipa nào trong Release này!")
+        sys.exit(1)
+
     repo_structure = {
         "name": "TrollStore Community Apps",
         "identifier": "com.trollstore.community.repo",
@@ -76,7 +80,7 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(repo_structure, f, indent=2, ensure_ascii=False)
 
-    print(f"Đã tạo thành công {len(apps_list)} ứng dụng vào file {OUTPUT_FILE}!")
+    print(f"Thành công: Đã trích xuất {len(apps_list)} ứng dụng IPA vào {OUTPUT_FILE}!")
 
 if __name__ == "__main__":
     main()
