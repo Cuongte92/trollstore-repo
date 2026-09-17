@@ -16,8 +16,8 @@ def generate_bundle_id(name):
     clean = re.sub(r'[^a-zA-Z0-9]', '', name).lower()
     return f"com.trollstore.{clean}"
 
-def fetch_first_release():
-    url = f"https://api.github.com/repos/{SOURCE_REPO}/releases"
+def fetch_latest_release():
+    url = f"https://api.github.com/repos/{SOURCE_REPO}/releases/latest"
     headers = {'User-Agent': 'ESign-Auto-Builder'}
     token = os.getenv("GITHUB_TOKEN")
     if token:
@@ -25,24 +25,19 @@ def fetch_first_release():
         
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req) as response:
-        releases = json.loads(response.read().decode())
-        if not releases:
-            raise Exception("Repo này không có bất kỳ Release nào!")
-        return releases[0]
+        return json.loads(response.read().decode())
 
 def main():
     print(f"Đang quét toàn bộ danh sách IPA từ {SOURCE_REPO}...")
     try:
-        release = fetch_first_release()
+        release = fetch_latest_release()
     except Exception as e:
         print(f"Lỗi khi kết nối GitHub API: {e}")
         sys.exit(1)
 
-    tag_version = release.get("tag_name", "1.0").lstrip("v")
+    tag_version = release.get("tag_name", "").lstrip("v")
     pub_date = release.get("published_at", "").split("T")[0]
     assets = release.get("assets", [])
-
-    print(f"Tìm thấy bản release: {tag_version} với {len(assets)} files đính kèm.")
 
     apps_list = []
 
@@ -67,10 +62,6 @@ def main():
             "localizedDescription": f"Bản build mod {app_name} từ kho TrollStore-DEBs."
         })
 
-    if not apps_list:
-        print("Cảnh báo: Không có file .ipa nào trong Release này!")
-        sys.exit(1)
-
     repo_structure = {
         "name": "TrollStore Community Apps",
         "identifier": "com.trollstore.community.repo",
@@ -80,7 +71,7 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(repo_structure, f, indent=2, ensure_ascii=False)
 
-    print(f"Thành công: Đã trích xuất {len(apps_list)} ứng dụng IPA vào {OUTPUT_FILE}!")
+    print(f"Đã tạo thành công {len(apps_list)} ứng dụng vào file {OUTPUT_FILE}!")
 
 if __name__ == "__main__":
     main()
